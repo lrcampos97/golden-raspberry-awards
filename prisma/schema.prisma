@@ -1,0 +1,17 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./golden-raspberry-awards.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Movie {
+  id       Int     @id @default(autoincrement())
+  title    String?
+  year     Int?
+  studios  String?
+  producer String?
+  winner   Boolean @default(false)
+}
