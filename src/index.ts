@@ -10,7 +10,9 @@ app.use(helmet());
 app.use(express.json());
 
 async function startServer(): Promise<void> {
-  await populateDatabase();
+  if (process.env.NODE_ENV !== 'test') {
+    await populateDatabase();
+  }
 
   const PORT = process.env.PORT || 3000;
 
