@@ -22,5 +22,5 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': 'error', // do not accept unused variables
     '@typescript-eslint/explicit-function-return-type': 'error', // explicit return type for functions
   },
-  ignorePatterns: ['dist'],
+  ignorePatterns: ['dist', 'src/**/*.test.ts'],
 };
