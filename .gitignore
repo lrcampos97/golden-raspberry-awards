@@ -19,8 +19,3 @@ node_modules/
 
 # dotenv environment variable files
 .env
-
-prisma/local
-prisma/migrations
-prisma/*.db
-prisma/*.db-journal

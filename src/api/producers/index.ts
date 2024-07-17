@@ -1,8 +1,7 @@
-import { Movie } from '@prisma/client';
-import { ProducerInterval } from '../../types';
+import { MovieRecord, ProducerInterval } from '../../types';
 import { logger } from '../../utils/pino';
-import { prismaClient } from '../../utils/prisma';
 import { Request, Response } from 'express';
+import { redis } from '../../utils/redis';
 
 type ProducerWinsType = { [producer: string]: number[] };
 
@@ -11,9 +10,14 @@ export async function producersHandler(
   res: Response,
 ): Promise<void> {
   try {
-    const movies = await prismaClient.movie.findMany({
-      where: { winner: true },
-    });
+    // Get all movies from redis.
+    const moviesKeys = await redis.keys('movie:*');
+    const moviesPromises = moviesKeys.map((key) => redis.get(key));
+    const moviesData = await Promise.all(moviesPromises);
+    const movies: MovieRecord[] = moviesData
+      .filter((data) => data !== null)
+      .map((data) => JSON.parse(data))
+      .filter((movie) => movie.winner);
 
     const producerWins = getProducerWins(movies);
 
@@ -24,13 +28,13 @@ export async function producersHandler(
       });
       return;
     }
+
     const allIntervals: ProducerInterval[] = [];
 
     for (const [producer, wins] of Object.entries(producerWins)) {
       // Sort years first
       wins.sort((a, b) => a - b);
 
-      // coletar os intervalos
       for (let i = 1; i < wins.length; i++) {
         const interval = wins[i] - wins[i - 1];
         const intervalData: ProducerInterval = {
@@ -44,21 +48,17 @@ export async function producersHandler(
       }
     }
 
-    // Maior intervalo entre os premios dos produtores
-    let maxIntervals: ProducerInterval[] = [];
     const maxInterval = Math.max(
       ...allIntervals.map((interval) => interval.interval),
     );
-    maxIntervals = allIntervals.filter(
+    const maxIntervals = allIntervals.filter(
       (interval) => interval.interval === maxInterval,
     );
 
-    // Menor intervalo
-    let minIntervals: ProducerInterval[] = [];
     const minInterval = Math.min(
       ...allIntervals.map((interval) => interval.interval),
     );
-    minIntervals = allIntervals.filter(
+    const minIntervals = allIntervals.filter(
       (interval) => interval.interval === minInterval,
     );
 
@@ -72,25 +72,36 @@ export async function producersHandler(
   }
 }
 
-export function getProducerWins(movies: Movie[]): ProducerWinsType | undefined {
+export function getProducerWins(
+  movies: MovieRecord[],
+): ProducerWinsType | undefined {
   try {
     const producerWins: { [producer: string]: number[] } = {};
 
     movies.forEach((movie) => {
       // We should only consider records with valid producer and year to calculate the interval
-      if (!movie.producer || !movie.year) {
+      if (!movie.producers || !movie.year) {
         logger.warn(`Invalid movie record skipped: ${JSON.stringify(movie)}`);
         return;
       }
 
-      if (!producerWins[movie.producer]) {
-        producerWins[movie.producer] = [];
-      }
-      producerWins[movie.producer].push(movie.year);
+      // Split multiple producers if present
+      const producers = movie.producers.split(',').map((p) => p.trim());
+
+      producers.forEach((producer) => {
+        if (!producerWins[producer]) {
+          producerWins[producer] = [];
+        }
+        // Avoid adding duplicate years
+        const movieYear = Number(movie.year);
+        if (!producerWins[producer].includes(movieYear)) {
+          producerWins[producer].push(movieYear);
+        }
+      });
     });
 
     return producerWins;
   } catch (err) {
-    logger.error(`Failed to get wins from each producers: ${err}`);
+    logger.error(`Failed to get wins from each producer: ${err}`);
   }
 }
