@@ -1,35 +1,18 @@
-import { parse } from 'csv-parse';
-import fs from 'fs';
-import path from 'path';
 import { logger } from '../utils/pino';
 import { MovieRecord } from '../types';
-import { setCache } from '../utils/redis';
+import { redis, setCache } from '../utils/redis';
+import { retrieveMovieListFromCSV } from '../utils/csv';
 
 /**
  * Populate the database memory with the movies from the CSV file.
  */
 export async function populateDatabaseMemory(): Promise<void> {
   try {
-    const filePath = path.join(
-      __dirname,
-      '../..',
-      'resources',
-      'movielist.csv',
-    );
+    const movies = await retrieveMovieListFromCSV();
+    // Clear the database memory before populating it.
+    await redis.flushdb();
 
-    logger.info('⏳ Reading data from CSV file...');
-    const fileContent = fs.readFileSync(filePath, { encoding: 'utf-8' });
-
-    const parser = parse(fileContent, {
-      columns: true,
-      skip_empty_lines: true,
-      delimiter: [';'],
-      trim: true,
-      ignore_last_delimiters: true,
-      relax_column_count: true,
-    });
-
-    for await (const record of parser) {
+    for await (const record of movies) {
       const movie: MovieRecord = record;
       const movieKey = `movie:${movie.title}`;
 
