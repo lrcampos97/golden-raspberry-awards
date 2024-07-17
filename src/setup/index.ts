@@ -3,19 +3,23 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from '../utils/pino';
 import { MovieRecord } from '../types';
-import { prismaClient } from '../utils/prisma';
+import { setCache } from '../utils/redis';
 
 /**
- * Populate the database with the movies from the CSV file.
+ * Populate the database memory with the movies from the CSV file.
  */
-export async function populateDatabase(): Promise<void> {
+export async function populateDatabaseMemory(): Promise<void> {
   try {
-    const filePath = path.join(__dirname, '../..', 'resources', 'movies.csv');
+    const filePath = path.join(
+      __dirname,
+      '../..',
+      'resources',
+      'movielist.csv',
+    );
 
     logger.info('⏳ Reading data from CSV file...');
     const fileContent = fs.readFileSync(filePath, { encoding: 'utf-8' });
 
-    const moviesPromises = [];
     const parser = parse(fileContent, {
       columns: true,
       skip_empty_lines: true,
@@ -27,25 +31,22 @@ export async function populateDatabase(): Promise<void> {
 
     for await (const record of parser) {
       const movie: MovieRecord = record;
+      const movieKey = `movie:${movie.title}`;
 
-      moviesPromises.push(
-        prismaClient.movie.create({
-          data: {
-            title: movie.title,
-            year: parseInt(movie.year),
-            producer: movie.producers,
-            studios: movie.studios,
-            winner: movie.winner === 'yes',
-          },
-        }),
-      );
+      const movieValue = JSON.stringify({
+        title: movie.title,
+        year: movie.year,
+        producers: movie.producers,
+        studios: movie.studios,
+        winner: movie.winner === 'yes',
+      });
+
+      setCache(movieKey, movieValue);
     }
 
-    await Promise.all(moviesPromises);
-
-    logger.info('✅ Database populated successfully.');
+    logger.info('✅ Database memory populated successfully.');
   } catch (error) {
-    logger.error(`❌ Failed to populate database: ${error}`);
+    logger.error(`❌ Failed to populate database memory: ${error}`);
     process.exit(1);
   }
 }

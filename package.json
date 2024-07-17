@@ -16,14 +16,13 @@
     "eslint:fix": "eslint --fix ./src",
     "format": "pnpm run prettier:fix && pnpm run eslint:fix",
     "build": "rm -rf dist && node_modules/.bin/tsc --noEmit",
-    "start": "pnpm prisma db push --force-reset > /dev/null && ts-node src/index.ts",
-    "test": "NODE_ENV=test jest --verbose --runInBand -c jest.config.js",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:generate": "prisma generate",
-    "prisma:reset": "pnpm prisma db push --force-reset"
+    "start": "ts-node src/index.ts",
+    "test": "NODE_ENV=test jest --verbose --runInBand -c jest.config.js"
   },
   "devDependencies": {
+    "@types/ioredis": "^5.0.0",
     "@types/node": "^20.14.10",
+    "@types/redis": "^4.0.11",
     "@types/supertest": "^6.0.2",
     "eslint": "^8.18.0",
     "eslint-config-prettier": "^9.1.0",
@@ -33,19 +32,20 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
-    "@prisma/client": "^5.16.2",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "cors": "^2.8.5",
     "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-async-handler": "^1.2.0",
     "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
     "jest": "^29.7.0",
     "pino": "^9.2.0",
     "pino-pretty": "^11.2.1",
-    "prisma": "^5.16.2",
+    "redis": "^4.6.15",
     "reflect-metadata": "^0.2.2",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.2"
